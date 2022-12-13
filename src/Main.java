@@ -1,4 +1,6 @@
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class Main {
@@ -24,12 +26,29 @@ public class Main {
 
         p1.addDistributionHub("Hub3",p2,setAreas);
 
+        Set<String> set1 = new HashSet<String>();
+
+        set1.add("B3J2K9");
+        set1.add("B2J2K9");
+
+        p1.addDistributionHub("Hub5",p2,set1);
+
         p1.hubDamage("Hub4", 12);
         p1.hubDamage("Hub3", 20);
+
+        p1.hubDamage("Hub5", 15);
+
+
 
         p1.hubRepair("Hub3", "mudra", 10, false);
 
         Integer p = p1.peopleOutOfService();
+
+        List<DamagedPostalCodes> l1 = new ArrayList<>();
+        l1 = p1.mostDamagedPostalCodes(2);
+
+        List<HubImpact> h1 = new ArrayList<>();
+        h1 = p1.fixOrder(2);
 
        // p1.addDistributionHub("mudra1", p2, 20);
     }

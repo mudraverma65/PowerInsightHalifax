@@ -143,12 +143,72 @@ public class PowerService {
 
     List<DamagedPostalCodes> mostDamagedPostalCodes ( int limit ){
 
-        return null;
+        List<DamagedPostalCodes> m1 = new ArrayList<>();
+
+        String queryDamage = "insert ignore into damagedpostalcodes (postalCode, repairEstimate)\n" +
+                "select hubpostal.postalCode, sum(repairEstimate)\n" +
+                "from hubimpact\n" +
+                "left join hubpostal on hubpostal.hubIdentifier = hubimpact.hubIdentifier\n" +
+                "group by postalCode;";
+
+        String querylimitDamage = "select * from damagedpostalcodes \n" +
+                "order by repairEstimate desc limit " + limit;
+
+        try {
+            PreparedStatement state1 = conn.setupConnection().prepareStatement(queryDamage);
+            state1.execute();
+
+            PreparedStatement statement = conn.setupConnection().prepareStatement(querylimitDamage);
+            ResultSet rs = statement.executeQuery(querylimitDamage);
+            while (rs.next()){
+                String postal1 = rs.getString(1);
+                Float repair1 = rs.getFloat(2);
+                DamagedPostalCodes d1 = new DamagedPostalCodes();
+                d1.setPostalCode(postal1);
+                d1.setRepairEstimate(repair1);
+                m1.add(d1);
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return m1;
     }
 
     List<HubImpact> fixOrder ( int limit ){
 
-        return null;
+        List<HubImpact> h1 = new ArrayList<>();
+
+        String queryImpact = "update hubimpact \n" +
+                "inner join distributionhub on hubimpact.hubIdentifier = distributionhub.hubIdentifier\n" +
+                "set impactValue = (\n" +
+                "\tselect peopleServed/repairEstimate\n" +
+                "\tgroup by hubimpact.hubIdentifier\n" +
+                ");";
+
+        String querylimitImpact = "select hubIdentifier, impactValue from hubimpact\n" +
+                "order by impactValue desc limit " +limit ;
+
+        PreparedStatement state1 = null;
+        try {
+            state1 = conn.setupConnection().prepareStatement(queryImpact);
+            state1.execute();
+
+            PreparedStatement statement = conn.setupConnection().prepareStatement(querylimitImpact);
+            ResultSet rs = statement.executeQuery(querylimitImpact);
+
+            while (rs.next()){
+                String hub1 = rs.getString(1);
+                Float impact1 = rs.getFloat(2);
+                HubImpact hubImpact = new HubImpact();
+                hubImpact.setHubIdentifier(hub1);
+                hubImpact.setImpactValue(impact1);
+                h1.add(hubImpact);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return h1;
     }
 
     List<Integer> rateOfServiceRestoration ( float increment){
@@ -166,6 +226,5 @@ public class PowerService {
     List<String> underservedPostalByArea (int limit ){
         return null;
     }
-
 
 }
