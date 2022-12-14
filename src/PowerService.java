@@ -9,6 +9,8 @@ import java.util.Set;
 
 public class PowerService {
 
+    Service serviceHelp = new Service();
+
     List<PostalCode> postalCodes = new ArrayList<PostalCode>();
 
     List<DistributionHub> distributionHubs = new ArrayList<DistributionHub>();
@@ -107,8 +109,7 @@ public class PowerService {
 
         int people = 0;
 
-        peopleServed p1 = new peopleServed();
-        p1.setpeopleServed();
+        serviceHelp.setServed();
 
 
         String find_people = "select peopleServed " +
@@ -199,7 +200,33 @@ public class PowerService {
     }
 
     List<Integer> rateOfServiceRestoration ( float increment){
-        return null;
+
+        List <Integer> rate = new ArrayList<>();
+
+        int totalPopulation = serviceHelp.peopletotal();
+        int totalHours = serviceHelp.hourstotal();
+
+        float timePerson = (float)totalHours/totalPopulation;
+
+
+
+        float timePercent;
+
+        int hoursEntry;
+
+        while(increment<100){
+            float peoplePercent = (increment/100)*totalPopulation;
+
+            timePercent = peoplePercent * timePerson;
+
+            hoursEntry = Math.round(timePercent);
+
+            rate.add(hoursEntry);
+
+            increment = increment + increment;
+
+        }
+        return rate;
     }
 
     List<HubImpact> repairPlan ( String startHub, int maxDistance, float maxTime ){
@@ -236,7 +263,7 @@ public class PowerService {
     List<String> underservedPostalByArea (int limit ){
         List<String> s1 = new ArrayList<>();
 
-        String querybyArea = "select postalcode.postalCode, area/count(hubpostal.hubIdentifier) as served\n" +
+        String querybyArea = "select postalcode.postalCode, count(hubpostal.hubIdentifier)/area as served\n" +
                 " from hubimpact\n" +
                 " left join hubpostal on hubimpact.hubIdentifier = hubpostal.hubIdentifier\n" +
                 " left join postalcode on hubpostal.postalCode = postalcode.postalCode\n" +

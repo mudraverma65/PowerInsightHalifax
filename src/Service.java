@@ -1,11 +1,12 @@
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 
-public class peopleServed {
+public class Service {
 
     JDBCConnection conn = new JDBCConnection();
 
-    void setpeopleServed(){
+    void setServed(){
         String hubsPostal = //"alter table postalcode\n" +
                 //"add hubs int;\n" +
                 //"\n" +
@@ -47,6 +48,46 @@ public class peopleServed {
         }
 
 
+    }
+
+    int peopletotal(){
+
+        Integer totalPeople = null;
+        String queryTotal = "select sum(peopleServed)\n" +
+                "from distributionhub\n" +
+                "inner join hubimpact on distributionhub.hubIdentifier = hubimpact.hubIdentifier;";
+
+        try {
+            PreparedStatement state1 = conn.setupConnection().prepareStatement(queryTotal);
+
+            ResultSet rs = state1.executeQuery(queryTotal);
+            while(rs.next()){
+                totalPeople = rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return totalPeople;
+    }
+
+    int hourstotal(){
+        Integer totalHours = null;
+        String queryTotal = "select sum(repairEstimate)\n" +
+                "from hubimpact;";
+
+        try {
+            PreparedStatement state1 = conn.setupConnection().prepareStatement(queryTotal);
+
+            ResultSet rs = state1.executeQuery(queryTotal);
+            while(rs.next()){
+                totalHours = rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return totalHours;
     }
 
 }

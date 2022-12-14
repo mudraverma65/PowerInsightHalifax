@@ -42,7 +42,7 @@ public class Main {
 
         p1.hubRepair("Hub3", "mudra", 10, false);
 
-        Integer p = p1.peopleOutOfService();
+        int p = p1.peopleOutOfService();
 
         List<DamagedPostalCodes> l1 = new ArrayList<>();
         l1 = p1.mostDamagedPostalCodes(2);
@@ -56,5 +56,8 @@ public class Main {
         List<String> u2 = new ArrayList<>();
         u2 = p1.underservedPostalByArea(2);
        // p1.addDistributionHub("mudra1", p2, 20);
+
+        List<Integer> rate = new ArrayList<>();
+        rate = p1.rateOfServiceRestoration(0.5f);
     }
 }
