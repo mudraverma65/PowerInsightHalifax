@@ -50,6 +50,11 @@ public class Main {
         List<HubImpact> h1 = new ArrayList<>();
         h1 = p1.fixOrder(2);
 
+        List<String> u1 = new ArrayList<>();
+        u1 = p1.underservedPostalByPopulation(2);
+
+        List<String> u2 = new ArrayList<>();
+        u2 = p1.underservedPostalByArea(2);
        // p1.addDistributionHub("mudra1", p2, 20);
     }
 }

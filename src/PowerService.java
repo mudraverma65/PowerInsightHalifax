@@ -107,28 +107,15 @@ public class PowerService {
 
         int people = 0;
 
-        String query_view = "alter view peopleServed as " +
-        "select distributionhub.hubIdentifier, population * (1/count(hubpostal.postalCode)) as peopleServed "+
-        "from distributionhub " +
-        "left join hubpostal on distributionhub.hubIdentifier = hubpostal.hubIdentifier " +
-        "left join postalCode on hubpostal.postalCode = postalcode.postalCode " +
-        "group by distributionhub.hubIdentifier;";
+        peopleServed p1 = new peopleServed();
+        p1.setpeopleServed();
 
-        String update_table = "update distributionhub " +
-        "inner join peopleServed on distributionhub.hubIdentifier = peopleServed.hubIdentifier " +
-        "set distributionhub.peopleServed = peopleserved.peopleServed;";
 
         String find_people = "select peopleServed " +
         "from hubimpact " +
         "left join distributionhub on distributionhub.hubIdentifier = hubimpact.hubIdentifier;";
 
         try {
-            PreparedStatement state1 = conn.setupConnection().prepareStatement(query_view);
-            state1.execute();
-
-            PreparedStatement state2 = conn.setupConnection().prepareStatement(update_table);
-            state2.execute();
-
             Statement state_people = conn.setupConnection().createStatement();
             ResultSet rs = state_people.executeQuery(find_people);
             while(rs.next()){
@@ -220,11 +207,55 @@ public class PowerService {
     }
 
     List<String> underservedPostalByPopulation ( int limit ){
-        return null;
+
+        List<String> s1 = new ArrayList<>();
+
+        String querybyPopulation = "select postalcode.postalCode, count(hubpostal.hubIdentifier)/population as served\n" +
+                " from hubimpact\n" +
+                " left join hubpostal on hubimpact.hubIdentifier = hubpostal.hubIdentifier\n" +
+                " left join postalcode on hubpostal.postalCode = postalcode.postalCode\n" +
+                " group by hubpostal.postalCode\n" +
+                " order by served desc limit " + limit;
+
+        PreparedStatement statement = null;
+        try {
+            statement = conn.setupConnection().prepareStatement(querybyPopulation);
+            ResultSet rs = statement.executeQuery(querybyPopulation);
+
+            while(rs.next()){
+                String postal1 = rs.getString(1);
+                s1.add(postal1);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+        return s1;
     }
 
     List<String> underservedPostalByArea (int limit ){
-        return null;
+        List<String> s1 = new ArrayList<>();
+
+        String querybyArea = "select postalcode.postalCode, area/count(hubpostal.hubIdentifier) as served\n" +
+                " from hubimpact\n" +
+                " left join hubpostal on hubimpact.hubIdentifier = hubpostal.hubIdentifier\n" +
+                " left join postalcode on hubpostal.postalCode = postalcode.postalCode\n" +
+                " group by hubpostal.postalCode\n" +
+                " order by served desc limit " + limit;
+
+        PreparedStatement statement = null;
+        try {
+            statement = conn.setupConnection().prepareStatement(querybyArea);
+            ResultSet rs = statement.executeQuery(querybyArea);
+
+            while(rs.next()){
+                String postal1 = rs.getString(1);
+                s1.add(postal1);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return s1;
     }
 
 }
