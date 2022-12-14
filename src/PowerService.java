@@ -1,4 +1,3 @@
-import javax.swing.plaf.nimbus.State;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -8,7 +7,6 @@ import java.util.List;
 import java.util.Set;
 
 public class PowerService {
-
     Service serviceHelp = new Service();
 
     List<PostalCode> postalCodes = new ArrayList<PostalCode>();
@@ -17,55 +15,36 @@ public class PowerService {
 
     JDBCConnection conn = new JDBCConnection();
 
-    boolean addPostalCode ( String postalCode, int population, int area ){
-        try{
-            PostalCode p1 = new PostalCode(postalCode,population,area);
-            p1.addPost();
-//            int index =0;
-//            while(index<postalCodes.size()){
-//                PostalCode tempPostal = postalCodes.get(index);
-//                if(postalCode == tempPostal.postalCode && population == tempPostal.population){
-//                    return false;
-//                } else if (postalCode == tempPostal.postalCode && population != tempPostal.population) {
-//                    postalCodes.remove(index);
-//                }
-//            }
-//            postalCodes.add(p1);
-        }
-        catch(Exception e){
-            System.out.println(e);
-            //return false;
-        }
-        return true;
-    }
-
-    boolean addDistributionHub ( String hubIdentifier, Point location, Set<String> servicedAreas ){
+    boolean addPostalCode(String postalCode, int population, int area) {
         try {
-            DistributionHub d1 = new DistributionHub(hubIdentifier, location, servicedAreas);
-            d1.addHub();
-//            int index = 0;
-//            while (index < distributionHubs.size()) {
-//                DistributionHub tempHub = distributionHubs.get(index);
-//                if (hubIdentifier == tempHub.hubIdentifier) {
-//                    return false;
-//                }
-//                distributionHubs.add(d1);
-//            }
-        }
-        catch(Exception e){
+            PostalCode p1 = new PostalCode(postalCode, population, area);
+            p1.addPost();
+        } catch (Exception e) {
             System.out.println(e);
             //return false;
         }
         return true;
     }
 
-    void hubDamage (String hubIdentifier, float repairEstimate ){
+    boolean addDistributionHub(String hubIdentifier, Point location, Set<String> servicedAreas) {
+        DistributionHub d1 = new DistributionHub(hubIdentifier, location, servicedAreas);
+        try {
+            d1.addHub();
+        } catch (RuntimeException e) {
+            System.out.println(e);
+            //return false;
+            d1.updateHub();
+        }
+        return true;
+    }
+
+    void hubDamage(String hubIdentifier, float repairEstimate) {
         String query = "Insert into hubimpact (hubIdentifier, repairEstimate) values (?,?) on duplicate key update repairEstimate = ? ";
         try {
             PreparedStatement statement = conn.setupConnection().prepareStatement(query);
-            statement.setString(1,hubIdentifier);
-            statement.setFloat(2,repairEstimate);
-            statement.setFloat(3,repairEstimate);
+            statement.setString(1, hubIdentifier);
+            statement.setFloat(2, repairEstimate);
+            statement.setFloat(3, repairEstimate);
             statement.executeUpdate();
             conn.setupConnection().close();
         } catch (SQLException e) {
@@ -73,29 +52,28 @@ public class PowerService {
         }
     }
 
-    void hubRepair( String hubIdentifier, String employeeId, float repairTime, boolean inService ){
+    void hubRepair(String hubIdentifier, String employeeId, float repairTime, boolean inService) {
         Float timeNeeded = null;
         //String query = "update hubimpact set repairEstimate = repairEstimate - `repairTime` where hubIdentifier = `hubIdentifier`;";
         String query = "select hubIdentifier, repairEstimate from hubimpact where hubIdentifier = ?";
         try {
             PreparedStatement statement = conn.setupConnection().prepareStatement(query);
-            statement.setString(1,hubIdentifier);
+            statement.setString(1, hubIdentifier);
             ResultSet resultSet = statement.executeQuery();
-            while(resultSet.next()){
+            while (resultSet.next()) {
                 //String currentHub = resultSet.getString(1);
                 timeNeeded = resultSet.getFloat(2);
                 timeNeeded = timeNeeded - repairTime;
-                if (timeNeeded <= 0){
+                if (timeNeeded <= 0) {
                     inService = true;
                 }
             }
-            if (inService == true){
+            if (inService == true) {
                 String query1 = "delete from hubimpact where hubIdentifier = `hubIdentifier`;";
                 PreparedStatement state = conn.setupConnection().prepareStatement(query1);
                 state.execute();
-            }
-            else if (inService == false){
-                hubDamage(hubIdentifier,timeNeeded);
+            } else if (inService == false) {
+                hubDamage(hubIdentifier, timeNeeded);
             }
             conn.setupConnection().close();
         } catch (SQLException e) {
@@ -105,21 +83,20 @@ public class PowerService {
 
     }
 
-    int peopleOutOfService (){
+    int peopleOutOfService() {
 
         int people = 0;
 
         serviceHelp.setServed();
 
-
         String find_people = "select peopleServed " +
-        "from hubimpact " +
-        "left join distributionhub on distributionhub.hubIdentifier = hubimpact.hubIdentifier;";
+                "from hubimpact " +
+                "left join distributionhub on distributionhub.hubIdentifier = hubimpact.hubIdentifier;";
 
         try {
             Statement state_people = conn.setupConnection().createStatement();
             ResultSet rs = state_people.executeQuery(find_people);
-            while(rs.next()){
+            while (rs.next()) {
                 Integer peopleHub = rs.getInt(1);
                 people = people + peopleHub;
             }
@@ -129,7 +106,7 @@ public class PowerService {
         return people;
     }
 
-    List<DamagedPostalCodes> mostDamagedPostalCodes ( int limit ){
+    List<DamagedPostalCodes> mostDamagedPostalCodes(int limit) {
 
         List<DamagedPostalCodes> m1 = new ArrayList<>();
 
@@ -148,7 +125,7 @@ public class PowerService {
 
             PreparedStatement statement = conn.setupConnection().prepareStatement(querylimitDamage);
             ResultSet rs = statement.executeQuery(querylimitDamage);
-            while (rs.next()){
+            while (rs.next()) {
                 String postal1 = rs.getString(1);
                 Float repair1 = rs.getFloat(2);
                 DamagedPostalCodes d1 = new DamagedPostalCodes();
@@ -163,7 +140,7 @@ public class PowerService {
         return m1;
     }
 
-    List<HubImpact> fixOrder ( int limit ){
+    List<HubImpact> fixOrder(int limit) {
 
         List<HubImpact> h1 = new ArrayList<>();
 
@@ -175,7 +152,7 @@ public class PowerService {
                 ");";
 
         String querylimitImpact = "select hubIdentifier, impactValue from hubimpact\n" +
-                "order by impactValue desc limit " +limit ;
+                "order by impactValue desc limit " + limit;
 
         PreparedStatement state1 = null;
         try {
@@ -185,7 +162,7 @@ public class PowerService {
             PreparedStatement statement = conn.setupConnection().prepareStatement(querylimitImpact);
             ResultSet rs = statement.executeQuery(querylimitImpact);
 
-            while (rs.next()){
+            while (rs.next()) {
                 String hub1 = rs.getString(1);
                 Float impact1 = rs.getFloat(2);
                 HubImpact hubImpact = new HubImpact();
@@ -199,23 +176,22 @@ public class PowerService {
         return h1;
     }
 
-    List<Integer> rateOfServiceRestoration ( float increment){
+    List<Integer> rateOfServiceRestoration(float increment) {
 
-        List <Integer> rate = new ArrayList<>();
+        List<Integer> rate = new ArrayList<>();
 
         int totalPopulation = serviceHelp.peopletotal();
         int totalHours = serviceHelp.hourstotal();
 
-        float timePerson = (float)totalHours/totalPopulation;
-
+        float timePerson = (float) totalHours / totalPopulation;
 
 
         float timePercent;
 
         int hoursEntry;
 
-        while(increment<100){
-            float peoplePercent = (increment/100)*totalPopulation;
+        while (increment < 100) {
+            float peoplePercent = (increment / 100) * totalPopulation;
 
             timePercent = peoplePercent * timePerson;
 
@@ -229,11 +205,11 @@ public class PowerService {
         return rate;
     }
 
-    List<HubImpact> repairPlan ( String startHub, int maxDistance, float maxTime ){
+    List<HubImpact> repairPlan(String startHub, int maxDistance, float maxTime) {
         return null;
     }
 
-    List<String> underservedPostalByPopulation ( int limit ){
+    List<String> underservedPostalByPopulation(int limit) {
 
         List<String> s1 = new ArrayList<>();
 
@@ -249,7 +225,7 @@ public class PowerService {
             statement = conn.setupConnection().prepareStatement(querybyPopulation);
             ResultSet rs = statement.executeQuery(querybyPopulation);
 
-            while(rs.next()){
+            while (rs.next()) {
                 String postal1 = rs.getString(1);
                 s1.add(postal1);
             }
@@ -260,7 +236,7 @@ public class PowerService {
         return s1;
     }
 
-    List<String> underservedPostalByArea (int limit ){
+    List<String> underservedPostalByArea(int limit) {
         List<String> s1 = new ArrayList<>();
 
         String querybyArea = "select postalcode.postalCode, count(hubpostal.hubIdentifier)/area as served\n" +
@@ -275,7 +251,7 @@ public class PowerService {
             statement = conn.setupConnection().prepareStatement(querybyArea);
             ResultSet rs = statement.executeQuery(querybyArea);
 
-            while(rs.next()){
+            while (rs.next()) {
                 String postal1 = rs.getString(1);
                 s1.add(postal1);
             }

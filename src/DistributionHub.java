@@ -61,4 +61,41 @@ public class DistributionHub implements Serializable {
             }
         }
     }
+
+    void updateHub() {
+        JDBCConnection conn = new JDBCConnection();
+        String query1 = "update point \n" +
+                "set x= ?, y = ?\n" +
+                "where hubIdentifier = ?;\n";
+        double currentx = location.getX();
+        double currenty = location.getY();
+        try {
+            PreparedStatement statement = conn.setupConnection().prepareStatement(query1);
+            statement.setDouble(1, currentx);
+            statement.setDouble(2, currenty);
+            statement.setString(3, hubIdentifier);
+            statement.executeUpdate();
+            conn.setupConnection().close();
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+
+
+        Iterator<String> it1 = servicedAreas.iterator();
+        while (it1.hasNext()) {
+            String postal = it1.next();
+            String query2 = "update hubpostal\n" +
+                    "set postalCode = ?\n" +
+                    "where hubIdentifier = ?;\n";
+            try {
+                PreparedStatement statement = conn.setupConnection().prepareStatement(query2);
+                statement.setObject(1, postal);
+                statement.setString(2, hubIdentifier);
+                statement.executeUpdate();
+                conn.setupConnection().close();
+            } catch (SQLException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
 }

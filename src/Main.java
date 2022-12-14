@@ -15,7 +15,12 @@ public class Main {
 
 
 
-        Point p2 = new Point(10,20);
+        Point p2 = new Point(5,14);
+        Point p3 = new Point (12,9);
+        Point p4 = new Point (8,10);
+        Point p5 = new Point (4,12);
+        Point p6 = new Point (7,15);
+
         Set<String> setAreas = new HashSet<String>();
 
         setAreas.add("B3J2K9");
@@ -24,14 +29,20 @@ public class Main {
 
         p1.addDistributionHub("Hub4",p2,setAreas);
 
-        p1.addDistributionHub("Hub3",p2,setAreas);
+        p1.addDistributionHub("Hub3",p3,setAreas);
 
         Set<String> set1 = new HashSet<String>();
 
         set1.add("B3J2K9");
         set1.add("B2J2K9");
 
-        p1.addDistributionHub("Hub5",p2,set1);
+        p1.addDistributionHub("Hub5",p4,set1);
+
+        Set<String> set2 = new HashSet<String>();
+
+        set2.add("B3J2K9");
+
+        p1.addDistributionHub("Hub7",p5,set2);
 
         p1.hubDamage("Hub4", 12);
         p1.hubDamage("Hub3", 20);
