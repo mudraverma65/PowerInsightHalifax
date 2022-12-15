@@ -3,6 +3,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class Service {
 
@@ -163,13 +164,18 @@ public class Service {
     }
 
 
-    List<HubImpact> getXmono(float totalTime, float maxTime, int totalDistance, float maxDistance, List<HubImpact> XMono, Double startX, Double endX, Double startY, Double endY){
+    List<HubImpact> getXmono(float totalTime, float maxTime, int totalDistance, float maxDistance, List<HubImpact> path, Double startX, Double endX, Double startY, Double endY, String startHub, String endHub){
+
+        String listHubs1 = "select * \n" +
+                "from hubdistance \n" +
+                "where x between ? and ? and y between ? and ? order by x asc;";
 
         String listHubs = "select * \n" +
                 "from hubdistance \n" +
-                "where x between ? and ? and y between ? and ?;";
+                "where x between least(?, ?) and greatest(?,?) and y between least(?, ?) and greatest(?,?) order by x asc;\n" +
+                ";";
 
-        List<HubImpact> xMono = XMono;
+        List<HubImpact> xMono = path;
 
         int diagonal =0;
 
@@ -177,53 +183,70 @@ public class Service {
 
         boolean yInc = true;
 
+        Double midpointX = startX;
+        Double midpointY = startY;
+
+
         PreparedStatement statementList = null;
         try {
             statementList = conn.setupConnection().prepareStatement(listHubs);
 
             statementList.setDouble(1, startX);
             statementList.setDouble(2, endX);
-            statementList.setDouble(3, startY);
-            statementList.setDouble(4, endY);
+            statementList.setDouble(3, startX);
+            statementList.setDouble(4, endX);
+            statementList.setDouble(5, startY);
+            statementList.setDouble(6, endY);
+            statementList.setDouble(7, startY);
+            statementList.setDouble(8, endY);
             ResultSet resultList = statementList.executeQuery();
 
-            while(resultList.next()) {
-                float currentTime = totalTime + resultList.getFloat(6);
-                int currentDistance = totalDistance + resultList.getInt(4);
-                Double currentX = resultList.getDouble(2);
-                Double currentY = resultList.getDouble(3);
+            while(resultList.next() ) {
+                String currentHub = resultList.getString(1);
+                if(currentHub.equals(startHub)==false && currentHub.equals(endHub)==false){
+                    float currentTime = totalTime + resultList.getFloat(6);
+                    int currentDistance = totalDistance + resultList.getInt(4);
+                    Double currentX = resultList.getDouble(2);
+                    Double currentY = resultList.getDouble(3);
+                    //String currentHub = resultList.getString(1);
 
-                if(currentX > startX){
-                    xInc = true;
+                    if(currentX > startX  ){
+                        xInc = true;
+                    }
+                    else{
+                        xInc = false;
+                    }
+
+                    if(currentY>startY){
+                        yInc = true;
+                    }
+                    else{
+                        yInc = false;
+                    }
+
+                    if((currentX - startX) > (endX - midpointX) / 2 ){
+                        diagonal = diagonal + 1;
+                    }
+
+                    else if((currentY - startY) > (endY - midpointY)/2 ){
+                        diagonal = diagonal + 1;
+                    }
+
+                    else{
+                        diagonal = diagonal + 0;
+                    }
+                    if (totalTime <= maxTime && currentDistance <= maxDistance && diagonal < 2 && ((xInc == true && yInc == false) || (xInc == true && yInc == true))) {
+                        HubImpact h1 = new HubImpact();
+                        h1.setHubIdentifier(resultList.getString(1));
+                        h1.setImpactValue(resultList.getFloat(5));
+                        xMono.add(h1);
+                    }
+
                     startX = currentX;
-                }
-                else{
-                    xInc = false;
-                }
-
-                if(currentY>startY){
-                    yInc = true;
                     startY = currentY;
-                }
-                else{
-                    yInc = false;
+
                 }
 
-                if((currentX - startX) > (endX - startX)/2 && (xInc == true || yInc == true)){
-                    diagonal = diagonal + 1;
-                }
-
-                if((currentY - startY) > (endY - startY)/2 && (xInc == true || yInc == true)){
-                    diagonal = diagonal + 1;
-                }
-
-                if (totalTime <= maxTime && currentDistance <= maxDistance && diagonal < 2 && ((xInc == true && yInc == false) || (xInc == true && yInc == true))) {
-                    HubImpact h1 = new HubImpact();
-                    h1.setHubIdentifier(resultList.getString(1));
-                    h1.setImpactValue(resultList.getFloat(5));
-
-                    xMono.add(h1);
-                }
             }
 
         } catch (SQLException e) {

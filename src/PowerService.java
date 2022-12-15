@@ -40,16 +40,16 @@ public class PowerService {
     }
 
     void hubDamage(String hubIdentifier, float repairEstimate) {
-        String query = "Insert into hubimpact (hubIdentifier, repairEstimate) values (?,?) on duplicate key update repairEstimate = ? ";
+        String query = "Insert into hubimpact (hubIdentifier, repairEstimate) values (?,?) ";
         try {
             PreparedStatement statement = conn.setupConnection().prepareStatement(query);
             statement.setString(1, hubIdentifier);
             statement.setFloat(2, repairEstimate);
-            statement.setFloat(3, repairEstimate);
-            statement.executeUpdate();
-            conn.setupConnection().close();
+           // statement.setFloat(3, repairEstimate);
+            statement.execute();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            System.out.println(e);
+            //throw new RuntimeException(e);
         }
     }
 
@@ -70,8 +70,9 @@ public class PowerService {
                 }
             }
             if (inService == true) {
-                String query1 = "delete from hubimpact where hubIdentifier = `hubIdentifier`;";
+                String query1 = "delete from hubimpact where hubIdentifier = ?";
                 PreparedStatement state = conn.setupConnection().prepareStatement(query1);
+                state.setString(1, hubIdentifier);
                 state.execute();
             } else if (inService == false) {
                 hubDamage(hubIdentifier, timeNeeded);
@@ -300,30 +301,8 @@ public class PowerService {
                  totalImpact = totalImpact + currentImpact;
             }
 
-            String listHubs = "select * \n" +
-                    "from hubdistance \n" +
-                    "where x between ? and ? and y between ? and ?;";
-
-            PreparedStatement statementList = conn.setupConnection().prepareStatement(listHubs);
-            statementList.setDouble(1, startX);
-            statementList.setDouble(2, endX);
-            statementList.setDouble(3, startY);
-            statementList.setDouble(4, endY);
-            ResultSet resultList = statementList.executeQuery();
-
-            while(resultList.next()){
-                float currentTime = totalTime + resultList.getInt(6);
-                int currentDistance = distanceCover + resultList.getInt(4);
-
-                if (totalTime<maxTime && distanceCover<maxDistance && diagonal < 2 && ((xInc == true && yInc == false) || (xInc == false && yInc == true) || (xInc == true && yInc == true))){
-
-                }
-                else{
-
-                }
-            }
-
-
+            List <HubImpact> xMono = new ArrayList<>();
+            xMono = serviceHelp.getXmono(totalTime,maxTime,distanceCover,maxDistance,pathFollow,startX,endX,startY,endY, startHub,endHub);
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
