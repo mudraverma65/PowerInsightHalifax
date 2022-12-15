@@ -31,9 +31,10 @@ public class PowerService {
         try {
             d1.addHub();
         } catch (RuntimeException e) {
-            System.out.println(e);
-            //return false;
-            d1.updateHub();
+            //System.out.println(e);
+            return false;
+            //d1.updateHub();
+            //throw new RuntimeException(e);
         }
         return true;
     }
@@ -185,12 +186,15 @@ public class PowerService {
 
         float timePerson = (float) totalHours / totalPopulation;
 
-
         float timePercent;
 
         int hoursEntry;
 
-        while (increment < 100) {
+        increment = increment*100;
+
+        float inc = increment;
+
+        while (increment <= 100) {
             float peoplePercent = (increment / 100) * totalPopulation;
 
             timePercent = peoplePercent * timePerson;
@@ -199,7 +203,7 @@ public class PowerService {
 
             rate.add(hoursEntry);
 
-            increment = increment + increment;
+            increment = increment + inc;
 
         }
         return rate;
@@ -211,11 +215,33 @@ public class PowerService {
 
         Double startY = null;
 
+        Double endX = null;
+
+        Double endY = null;
+
         String endHub = null;
+
+        Double distanceCover = null;
+
+        Double impactEnd = null;
+
+        int timeTaken = 0;
+
+        List <HubImpact> pathFollow = new ArrayList<>();
 
         String queryfindHub = "select x,y from point where hubIdentifier = ? ";
 
-        String distanceStart = "select hubIdentifier, x, y, max(sqrt((x-?)*(x-?) + (y-?)*(y-?))) as distance from point;";
+        String viewDistance = "alter view hubdistance as\n" +
+                "select point.hubIdentifier, x, y, sqrt((x-?)*(x-?) + (y-?)*(y-?))  as distance, impactvalue\n" +
+                "from point\n" +
+                "left join hubimpact on point.hubIdentifier = hubimpact.hubIdentifier\n" +
+                "where sqrt((x-?)*(x-?) + (y-?)*(y-?)) < ? and impactvalue is not null\n" +
+                "order by impactvalue desc ;";
+
+        String distanceStart = "select hubIdentifier, x, y, sqrt((x-?)*(x-?) + (y-?)*(y-?))  as distance\n" +
+                "from point\n" +
+                "where sqrt((x-?)*(x-?) + (y-?)*(y-?)) < ?" +
+                "order by distance desc limit 1;" ;
 
         try {
             PreparedStatement statement = conn.setupConnection().prepareStatement(queryfindHub);
@@ -226,17 +252,32 @@ public class PowerService {
                 startY = rs.getDouble(2);
             }
 
-            PreparedStatement statementEnd = conn.setupConnection().prepareStatement(distanceStart);
+            PreparedStatement statementEnd = conn.setupConnection().prepareStatement(viewDistance);
             statementEnd.setDouble(1, startX);
             statementEnd.setDouble(2, startX);
             statementEnd.setDouble(3, startY);
             statementEnd.setDouble(4, startY);
-            ResultSet rs1 = statementEnd.executeQuery();
-            while(rs1.next()){
-                endHub = rs1.getString(1);
+            statementEnd.setDouble(5, startX);
+            statementEnd.setDouble(6, startX);
+            statementEnd.setDouble(7, startY);
+            statementEnd.setDouble(8, startY);
+            statementEnd.setDouble(9, maxDistance);
+            statementEnd.execute();
+
+            String queryEndhub = "select * \n" +
+                    "from hubdistance\n" +
+                    "limit 1;";
+
+            PreparedStatement statementEndHub = conn.setupConnection().prepareStatement(queryEndhub);
+            ResultSet rs1 = statementEndHub.executeQuery();
+             while(rs1.next()){
+                    endHub = rs1.getString(1);
+                    endX = rs1.getDouble(2);
+                    endY = rs1.getDouble(3);
+                    distanceCover = rs1.getDouble(4);
+                    impactEnd = rs1.getDouble(5);
             }
-
-
+             
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -253,7 +294,7 @@ public class PowerService {
                 " left join hubpostal on hubimpact.hubIdentifier = hubpostal.hubIdentifier\n" +
                 " left join postalcode on hubpostal.postalCode = postalcode.postalCode\n" +
                 " group by hubpostal.postalCode\n" +
-                " order by served desc limit " + limit;
+                " order by served asc limit " + limit;
 
         PreparedStatement statement = null;
         try {
@@ -279,7 +320,7 @@ public class PowerService {
                 " left join hubpostal on hubimpact.hubIdentifier = hubpostal.hubIdentifier\n" +
                 " left join postalcode on hubpostal.postalCode = postalcode.postalCode\n" +
                 " group by hubpostal.postalCode\n" +
-                " order by served desc limit " + limit;
+                " order by served asc limit " + limit;
 
         PreparedStatement statement = null;
         try {

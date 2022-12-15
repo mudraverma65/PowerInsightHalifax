@@ -73,5 +73,6 @@ public class Main {
         rate = p1.rateOfServiceRestoration(0.5f);
 
         p1.repairPlan("Hub4",10, 20f);
+
     }
 }
