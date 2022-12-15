@@ -206,6 +206,41 @@ public class PowerService {
     }
 
     List<HubImpact> repairPlan(String startHub, int maxDistance, float maxTime) {
+
+        Double startX = null;
+
+        Double startY = null;
+
+        String endHub = null;
+
+        String queryfindHub = "select x,y from point where hubIdentifier = ? ";
+
+        String distanceStart = "select hubIdentifier, x, y, max(sqrt((x-?)*(x-?) + (y-?)*(y-?))) as distance from point;";
+
+        try {
+            PreparedStatement statement = conn.setupConnection().prepareStatement(queryfindHub);
+            statement.setString(1, startHub);
+            ResultSet rs = statement.executeQuery();
+            while(rs.next()){
+                startX = rs.getDouble(1);
+                startY = rs.getDouble(2);
+            }
+
+            PreparedStatement statementEnd = conn.setupConnection().prepareStatement(distanceStart);
+            statementEnd.setDouble(1, startX);
+            statementEnd.setDouble(2, startX);
+            statementEnd.setDouble(3, startY);
+            statementEnd.setDouble(4, startY);
+            ResultSet rs1 = statementEnd.executeQuery();
+            while(rs1.next()){
+                endHub = rs1.getString(1);
+            }
+
+
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
         return null;
     }
 

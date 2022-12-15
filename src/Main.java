@@ -52,6 +52,7 @@ public class Main {
 
 
         p1.hubRepair("Hub3", "mudra", 10, false);
+        p1.hubRepair("Hub5", "mudra", 12, false);
 
         int p = p1.peopleOutOfService();
 
@@ -70,5 +71,7 @@ public class Main {
 
         List<Integer> rate = new ArrayList<>();
         rate = p1.rateOfServiceRestoration(0.5f);
+
+        p1.repairPlan("Hub4",10, 20f);
     }
 }
