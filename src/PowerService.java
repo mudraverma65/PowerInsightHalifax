@@ -16,12 +16,16 @@ public class PowerService {
     JDBCConnection conn = new JDBCConnection();
 
     boolean addPostalCode(String postalCode, int population, int area) {
+        PostalCode p1 = null;
         try {
-            PostalCode p1 = new PostalCode(postalCode, population, area);
-            p1.addPost();
-        } catch (Exception e) {
-            System.out.println(e);
-            //return false;
+            p1 = new PostalCode(postalCode, population, area);
+            boolean status;
+            status = p1.addPost();
+            if (status == false){
+                status = p1.updatePost();
+            }
+        } catch (SQLException e) {
+           return false;
         }
         return true;
     }
@@ -29,12 +33,13 @@ public class PowerService {
     boolean addDistributionHub(String hubIdentifier, Point location, Set<String> servicedAreas) {
         DistributionHub d1 = new DistributionHub(hubIdentifier, location, servicedAreas);
         try {
-            d1.addHub();
+            boolean status;
+            status = d1.addHub();
+            if(status==false){
+                status = d1.updateHub();
+            }
         } catch (RuntimeException e) {
-            //System.out.println(e);
             return false;
-            //d1.updateHub();
-            //throw new RuntimeException(e);
         }
         return true;
     }

@@ -18,7 +18,7 @@ public class DistributionHub implements Serializable {
         this.servicedAreas = servicedAreas;
     }
 
-    void addHub(){
+    boolean addHub(){
         JDBCConnection conn = new JDBCConnection();
         String query = "Insert into distributionhub (hubIdentifier) values (?)";
         try {
@@ -27,7 +27,7 @@ public class DistributionHub implements Serializable {
             statement.executeUpdate();
             conn.setupConnection().close();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            return false;
         }
 
         String query1 = "Insert into point (hubIdentifier, x,y) values (?, ?,?)";
@@ -42,7 +42,7 @@ public class DistributionHub implements Serializable {
             conn.setupConnection().close();
         }
         catch(SQLException e){
-            throw new RuntimeException(e);
+            return false;
         }
 
 
@@ -57,16 +57,17 @@ public class DistributionHub implements Serializable {
                 statement.executeUpdate();
                 conn.setupConnection().close();
             } catch (SQLException e) {
-                throw new RuntimeException(e);
+                return false;
             }
         }
+        return true;
     }
 
-    void updateHub() {
+    boolean updateHub() {
         JDBCConnection conn = new JDBCConnection();
         String query1 = "update point \n" +
-                "set x= ?, y = ?\n" +
-                "where hubIdentifier = ?;\n";
+                "set x= ?, y = ? " +
+                "where hubIdentifier = ?";
         double currentx = location.getX();
         double currenty = location.getY();
         try {
@@ -85,8 +86,8 @@ public class DistributionHub implements Serializable {
         while (it1.hasNext()) {
             String postal = it1.next();
             String query2 = "update hubpostal\n" +
-                    "set postalCode = ?\n" +
-                    "where hubIdentifier = ?;\n";
+                    "set postalCode = ? " +
+                    "where hubIdentifier = ?";
             try {
                 PreparedStatement statement = conn.setupConnection().prepareStatement(query2);
                 statement.setObject(1, postal);
@@ -94,8 +95,10 @@ public class DistributionHub implements Serializable {
                 statement.executeUpdate();
                 conn.setupConnection().close();
             } catch (SQLException e) {
-                throw new RuntimeException(e);
+                return false;
             }
         }
+        return true;
     }
+
 }

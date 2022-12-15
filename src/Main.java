@@ -17,6 +17,8 @@ public class Main {
         p1.addPostalCode("O6J2K9", 703, 102);
         p1.addPostalCode("FHD2I9", 2003, 1500);
         p1.addPostalCode("A6P2K9", 79000, 11022);
+        p1.addPostalCode("A6P2K9", 79100, 21022);
+        p1.addPostalCode("FHD2I9", 79100, 21022);
 
 
         Point p2 = new Point(5,14);
@@ -96,7 +98,7 @@ public class Main {
         set7.add("P9J2K9");
         set7.add("FHJ2I9");
         set7.add("B3J2M9");
-        p1.addDistributionHub("Hub9",p10,set7);
+        p1.addDistributionHub("Hub9",p9,set7);
 
         p1.hubDamage("Hub1", 19);
         p1.hubDamage("Hub2", 20);
