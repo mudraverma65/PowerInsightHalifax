@@ -49,8 +49,6 @@ public class Main {
 
         p1.hubDamage("Hub5", 15);
 
-
-
         p1.hubRepair("Hub3", "mudra", 10, false);
         p1.hubRepair("Hub5", "mudra", 12, false);
 

@@ -221,27 +221,31 @@ public class PowerService {
 
         String endHub = null;
 
-        Double distanceCover = null;
+        int distanceCover = 0;
 
-        Double impactEnd = null;
+        Double totalImpact = 0.0;
 
-        int timeTaken = 0;
+        int totalTime = 0;
+
+        int diagonal =0;
+
+        boolean xInc = true;
+
+        boolean yInc = true;
 
         List <HubImpact> pathFollow = new ArrayList<>();
 
-        String queryfindHub = "select x,y from point where hubIdentifier = ? ";
+        String queryfindHub = "select x,y,repairEstimate, impactvalue \n" +
+                "from point \n" +
+                "left join hubimpact on point.hubIdentifier = hubimpact.hubIdentifier \n" +
+                "where point.hubIdentifier = ? ";
 
         String viewDistance = "alter view hubdistance as\n" +
-                "select point.hubIdentifier, x, y, sqrt((x-?)*(x-?) + (y-?)*(y-?))  as distance, impactvalue\n" +
+                "select point.hubIdentifier, x, y, (abs(x-?) + abs(y-?))  as distance, impactvalue, repairEstimate\n" +
                 "from point\n" +
                 "left join hubimpact on point.hubIdentifier = hubimpact.hubIdentifier\n" +
-                "where sqrt((x-?)*(x-?) + (y-?)*(y-?)) < ? and impactvalue is not null\n" +
+                "where (abs(x-?) + abs(y-?)) < ? and impactvalue is not null\n" +
                 "order by impactvalue desc ;";
-
-        String distanceStart = "select hubIdentifier, x, y, sqrt((x-?)*(x-?) + (y-?)*(y-?))  as distance\n" +
-                "from point\n" +
-                "where sqrt((x-?)*(x-?) + (y-?)*(y-?)) < ?" +
-                "order by distance desc limit 1;" ;
 
         try {
             PreparedStatement statement = conn.setupConnection().prepareStatement(queryfindHub);
@@ -250,18 +254,26 @@ public class PowerService {
             while(rs.next()){
                 startX = rs.getDouble(1);
                 startY = rs.getDouble(2);
+                int currentTime = rs.getInt(3);
+                Float currentImpact = rs.getFloat(4);
+
+                HubImpact h1 = new HubImpact();
+                h1.setImpactValue(currentImpact);
+                h1.setHubIdentifier(startHub);
+
+                pathFollow.add(h1);
+
+                totalTime = totalTime + currentTime;
+                totalImpact = totalImpact + currentImpact;
+
             }
 
             PreparedStatement statementEnd = conn.setupConnection().prepareStatement(viewDistance);
             statementEnd.setDouble(1, startX);
-            statementEnd.setDouble(2, startX);
-            statementEnd.setDouble(3, startY);
+            statementEnd.setDouble(2, startY);
+            statementEnd.setDouble(3, startX);
             statementEnd.setDouble(4, startY);
-            statementEnd.setDouble(5, startX);
-            statementEnd.setDouble(6, startX);
-            statementEnd.setDouble(7, startY);
-            statementEnd.setDouble(8, startY);
-            statementEnd.setDouble(9, maxDistance);
+            statementEnd.setDouble(5, maxDistance);
             statementEnd.execute();
 
             String queryEndhub = "select * \n" +
@@ -270,19 +282,53 @@ public class PowerService {
 
             PreparedStatement statementEndHub = conn.setupConnection().prepareStatement(queryEndhub);
             ResultSet rs1 = statementEndHub.executeQuery();
-             while(rs1.next()){
-                    endHub = rs1.getString(1);
-                    endX = rs1.getDouble(2);
-                    endY = rs1.getDouble(3);
-                    distanceCover = rs1.getDouble(4);
-                    impactEnd = rs1.getDouble(5);
+            while(rs1.next()){
+                 endHub = rs1.getString(1);
+                 endX = rs1.getDouble(2);
+                 endY = rs1.getDouble(3);
+                 distanceCover = rs1.getInt(4);
+                 Float currentImpact = rs1.getFloat(5);
+                 int currentTime = rs1.getInt(6);
+
+                 HubImpact h1 = new HubImpact();
+                 h1.setImpactValue(currentImpact);
+                 h1.setHubIdentifier(endHub);
+
+                 pathFollow.add(h1);
+
+                 totalTime = totalTime + currentTime;
+                 totalImpact = totalImpact + currentImpact;
             }
-             
+
+            String listHubs = "select * \n" +
+                    "from hubdistance \n" +
+                    "where x between ? and ? and y between ? and ?;";
+
+            PreparedStatement statementList = conn.setupConnection().prepareStatement(listHubs);
+            statementList.setDouble(1, startX);
+            statementList.setDouble(2, endX);
+            statementList.setDouble(3, startY);
+            statementList.setDouble(4, endY);
+            ResultSet resultList = statementList.executeQuery();
+
+            while(resultList.next()){
+                float currentTime = totalTime + resultList.getInt(6);
+                int currentDistance = distanceCover + resultList.getInt(4);
+
+                if (totalTime<maxTime && distanceCover<maxDistance && diagonal < 2 && ((xInc == true && yInc == false) || (xInc == false && yInc == true) || (xInc == true && yInc == true))){
+
+                }
+                else{
+
+                }
+            }
+
+
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        return null;
+        return pathFollow;
     }
 
     List<String> underservedPostalByPopulation(int limit) {

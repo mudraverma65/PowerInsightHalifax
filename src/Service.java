@@ -1,6 +1,8 @@
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Service {
 
@@ -157,6 +159,77 @@ public class Service {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
+
+    }
+
+
+    List<HubImpact> getXmono(float totalTime, float maxTime, int totalDistance, float maxDistance, List<HubImpact> XMono, Double startX, Double endX, Double startY, Double endY){
+
+        String listHubs = "select * \n" +
+                "from hubdistance \n" +
+                "where x between ? and ? and y between ? and ?;";
+
+        List<HubImpact> xMono = XMono;
+
+        int diagonal =0;
+
+        boolean xInc = true;
+
+        boolean yInc = true;
+
+        PreparedStatement statementList = null;
+        try {
+            statementList = conn.setupConnection().prepareStatement(listHubs);
+
+            statementList.setDouble(1, startX);
+            statementList.setDouble(2, endX);
+            statementList.setDouble(3, startY);
+            statementList.setDouble(4, endY);
+            ResultSet resultList = statementList.executeQuery();
+
+            while(resultList.next()) {
+                float currentTime = totalTime + resultList.getFloat(6);
+                int currentDistance = totalDistance + resultList.getInt(4);
+                Double currentX = resultList.getDouble(2);
+                Double currentY = resultList.getDouble(3);
+
+                if(currentX > startX){
+                    xInc = true;
+                    startX = currentX;
+                }
+                else{
+                    xInc = false;
+                }
+
+                if(currentY>startY){
+                    yInc = true;
+                    startY = currentY;
+                }
+                else{
+                    yInc = false;
+                }
+
+                if((currentX - startX) > (endX - startX)/2 && (xInc == true || yInc == true)){
+                    diagonal = diagonal + 1;
+                }
+
+                if((currentY - startY) > (endY - startY)/2 && (xInc == true || yInc == true)){
+                    diagonal = diagonal + 1;
+                }
+
+                if (totalTime <= maxTime && currentDistance <= maxDistance && diagonal < 2 && ((xInc == true && yInc == false) || (xInc == true && yInc == true))) {
+                    HubImpact h1 = new HubImpact();
+                    h1.setHubIdentifier(resultList.getString(1));
+                    h1.setImpactValue(resultList.getFloat(5));
+
+                    xMono.add(h1);
+                }
+            }
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return xMono;
 
     }
 
