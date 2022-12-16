@@ -10,9 +10,7 @@ public class Service {
     JDBCConnection conn = new JDBCConnection();
 
     void setServed() {
-        String hubsPostal = //"alter table postalcode\n" +
-                //"add hubs int;\n" +
-                //"\n" +
+        String hubsPostal =
                 "alter view hubpeoplepostal as \n" +
                         "select count(hubIdentifier) as hubs, postalCode\n" +
                         "from hubpostal\n" +
@@ -49,11 +47,9 @@ public class Service {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-
-
     }
 
-    int peopletotal() {
+    int peopleTotal() {
 
         Integer totalPeople = null;
         String queryTotal = "select sum(peopleServed)\n" +
@@ -74,7 +70,7 @@ public class Service {
         return totalPeople;
     }
 
-    int hourstotal() {
+    int hoursTotal() {
         Integer totalHours = null;
         String queryTotal = "select sum(repairEstimate)\n" +
                 "from hubimpact;";
@@ -160,20 +156,43 @@ public class Service {
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-
     }
 
+    boolean addImpact(String hubIdentifier, float repairEstimate){
+        JDBCConnection conn = new JDBCConnection();
+        String query = "Insert into hubimpact (hubIdentifier, repairEstimate) values (?,?) ";
+        try {
+            PreparedStatement statement = conn.setupConnection().prepareStatement(query);
+            statement.setString(1, hubIdentifier);
+            statement.setFloat(2, repairEstimate);
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            return false;
+        }
+        return true;
+    }
 
-    List<HubImpact> getXmono(float totalTime, float maxTime, int totalDistance, float maxDistance, List<HubImpact> path, Double startX, Double endX, Double startY, Double endY, String startHub, String endHub){
+    boolean updateImpact(String hubIdentifier, float repairEstimate ){
+        JDBCConnection conn = new JDBCConnection();
+        String query = "update hubimpact " +
+                "set repairEstimate = ?" +
+                "where hubIdentifier = ? ";
+        try {
+            PreparedStatement statement = conn.setupConnection().prepareStatement(query);
+            statement.setFloat(1,repairEstimate);
+            statement.setString(2, hubIdentifier);
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            return false;
+        }
+        return true;
+    }
 
-        String listHubs1 = "select * \n" +
-                "from hubdistance \n" +
-                "where x between ? and ? and y between ? and ? order by x asc;";
+    PathImpact getXmono(float totalTime, float maxTime, int totalDistance, float maxDistance, List<HubImpact> path, Double totalImpact, Double startX, Double endX, Double startY, Double endY, String startHub, String endHub){
 
         String listHubs = "select * \n" +
                 "from hubdistance \n" +
-                "where x between least(?, ?) and greatest(?,?) and y between least(?, ?) and greatest(?,?) order by x asc;\n" +
-                ";";
+                "where x between least(?, ?) and greatest(?,?) and y between least(?, ?) and greatest(?,?) order by x asc ";
 
         List<HubImpact> xMono = path;
 
@@ -186,6 +205,7 @@ public class Service {
         Double midpointX = startX;
         Double midpointY = startY;
 
+        PathImpact p1 = new PathImpact();
 
         PreparedStatement statementList = null;
         try {
@@ -204,20 +224,21 @@ public class Service {
             while(resultList.next() ) {
                 String currentHub = resultList.getString(1);
                 if(currentHub.equals(startHub)==false && currentHub.equals(endHub)==false){
-                    float currentTime = totalTime + resultList.getFloat(6);
-                    int currentDistance = totalDistance + resultList.getInt(4);
+                    totalTime = totalTime + resultList.getFloat(6);
+                    totalDistance = totalDistance + resultList.getInt(4);
                     Double currentX = resultList.getDouble(2);
                     Double currentY = resultList.getDouble(3);
+                    totalImpact = totalImpact + resultList.getFloat(5);
                     //String currentHub = resultList.getString(1);
 
-                    if(currentX > startX  ){
+                    if(currentX >= startX  ){
                         xInc = true;
                     }
                     else{
                         xInc = false;
                     }
 
-                    if(currentY>startY){
+                    if(currentY >= startY){
                         yInc = true;
                     }
                     else{
@@ -235,7 +256,7 @@ public class Service {
                     else{
                         diagonal = diagonal + 0;
                     }
-                    if (totalTime <= maxTime && currentDistance <= maxDistance && diagonal < 2 && ((xInc == true && yInc == false) || (xInc == true && yInc == true))) {
+                    if (totalTime <= maxTime && totalDistance <= maxDistance && diagonal < 2 && ((xInc == true && yInc == false) || (xInc == true && yInc == true))) {
                         HubImpact h1 = new HubImpact();
                         h1.setHubIdentifier(resultList.getString(1));
                         h1.setImpactValue(resultList.getFloat(5));
@@ -249,10 +270,14 @@ public class Service {
 
             }
 
+            p1.setPath(xMono);
+            p1.setTotalImpact(totalImpact);
+
+
         } catch (SQLException e) {
             throw new RuntimeException(e);
         }
-        return xMono;
+        return p1;
 
     }
 

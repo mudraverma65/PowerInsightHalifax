@@ -8,13 +8,7 @@ import java.util.Set;
 
 public class PowerService {
     Service serviceHelp = new Service();
-
-    List<PostalCode> postalCodes = new ArrayList<PostalCode>();
-
-    List<DistributionHub> distributionHubs = new ArrayList<DistributionHub>();
-
     JDBCConnection conn = new JDBCConnection();
-
     boolean addPostalCode(String postalCode, int population, int area) {
         PostalCode p1 = null;
         try {
@@ -45,29 +39,26 @@ public class PowerService {
     }
 
     void hubDamage(String hubIdentifier, float repairEstimate) {
-        String query = "Insert into hubimpact (hubIdentifier, repairEstimate) values (?,?) ";
         try {
-            PreparedStatement statement = conn.setupConnection().prepareStatement(query);
-            statement.setString(1, hubIdentifier);
-            statement.setFloat(2, repairEstimate);
-           // statement.setFloat(3, repairEstimate);
-            statement.execute();
-        } catch (SQLException e) {
-            System.out.println(e);
-            //throw new RuntimeException(e);
+            boolean status;
+            status = serviceHelp.addImpact(hubIdentifier, repairEstimate);
+            if(status==false){
+                status = serviceHelp.updateImpact(hubIdentifier, repairEstimate);
+            }
+        } catch (RuntimeException e) {
+            e.printStackTrace();
         }
+
     }
 
     void hubRepair(String hubIdentifier, String employeeId, float repairTime, boolean inService) {
         Float timeNeeded = null;
-        //String query = "update hubimpact set repairEstimate = repairEstimate - `repairTime` where hubIdentifier = `hubIdentifier`;";
         String query = "select hubIdentifier, repairEstimate from hubimpact where hubIdentifier = ?";
         try {
             PreparedStatement statement = conn.setupConnection().prepareStatement(query);
             statement.setString(1, hubIdentifier);
             ResultSet resultSet = statement.executeQuery();
             while (resultSet.next()) {
-                //String currentHub = resultSet.getString(1);
                 timeNeeded = resultSet.getFloat(2);
                 timeNeeded = timeNeeded - repairTime;
                 if (timeNeeded <= 0) {
@@ -84,10 +75,8 @@ public class PowerService {
             }
             conn.setupConnection().close();
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
-
-
     }
 
     int peopleOutOfService() {
@@ -108,7 +97,7 @@ public class PowerService {
                 people = people + peopleHub;
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
         return people;
     }
@@ -123,26 +112,40 @@ public class PowerService {
                 "left join hubpostal on hubpostal.hubIdentifier = hubimpact.hubIdentifier\n" +
                 "group by postalCode;";
 
-        String querylimitDamage = "select * from damagedpostalcodes \n" +
-                "order by repairEstimate desc limit " + limit;
+
+        String queryLDamage = "select * from damagedpostalcodes \n" +
+                "order by repairEstimate desc ";
 
         try {
             PreparedStatement state1 = conn.setupConnection().prepareStatement(queryDamage);
             state1.execute();
 
-            PreparedStatement statement = conn.setupConnection().prepareStatement(querylimitDamage);
-            ResultSet rs = statement.executeQuery(querylimitDamage);
-            while (rs.next()) {
+            PreparedStatement statement = conn.setupConnection().prepareStatement(queryLDamage);
+            ResultSet rs = statement.executeQuery();
+
+            while (rs.next() && m1.size()<limit) {
                 String postal1 = rs.getString(1);
                 Float repair1 = rs.getFloat(2);
                 DamagedPostalCodes d1 = new DamagedPostalCodes();
                 d1.setPostalCode(postal1);
                 d1.setRepairEstimate(repair1);
                 m1.add(d1);
+                while(m1.size() == limit){
+                    rs.next();
+                    if(rs.getFloat(2) == repair1){
+                        String postal = rs.getString(1);
+                        Float repair = rs.getFloat(2);
+                        DamagedPostalCodes d2 = new DamagedPostalCodes();
+                        d1.setPostalCode(postal);
+                        d1.setRepairEstimate(repair);
+                        m1.add(d1);
+                        limit ++;
+                    }
+                }
             }
 
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            return m1;
         }
         return m1;
     }
@@ -159,7 +162,7 @@ public class PowerService {
                 ");";
 
         String querylimitImpact = "select hubIdentifier, impactValue from hubimpact\n" +
-                "order by impactValue desc limit " + limit;
+                "order by impactValue desc ";
 
         PreparedStatement state1 = null;
         try {
@@ -169,16 +172,29 @@ public class PowerService {
             PreparedStatement statement = conn.setupConnection().prepareStatement(querylimitImpact);
             ResultSet rs = statement.executeQuery(querylimitImpact);
 
-            while (rs.next()) {
+            while (rs.next() && h1.size()<limit) {
                 String hub1 = rs.getString(1);
                 Float impact1 = rs.getFloat(2);
                 HubImpact hubImpact = new HubImpact();
                 hubImpact.setHubIdentifier(hub1);
                 hubImpact.setImpactValue(impact1);
                 h1.add(hubImpact);
+                while(h1.size() == limit ){
+                    rs.next();
+                    if(rs.getFloat(2) == impact1){
+                        String hub = rs.getString(1);
+                        Float impact = rs.getFloat(2);
+                        HubImpact hubImpact1 = new HubImpact();
+                        hubImpact.setHubIdentifier(hub);
+                        hubImpact.setImpactValue(impact);
+                        h1.add(hubImpact1);
+                        limit ++;
+                    }
+                }
             }
+
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            return h1;
         }
         return h1;
     }
@@ -187,8 +203,9 @@ public class PowerService {
 
         List<Integer> rate = new ArrayList<>();
 
-        int totalPopulation = serviceHelp.peopletotal();
-        int totalHours = serviceHelp.hourstotal();
+        int totalPopulation = serviceHelp.peopleTotal();
+
+        int totalHours = serviceHelp.hoursTotal();
 
         float timePerson = (float) totalHours / totalPopulation;
 
@@ -200,7 +217,8 @@ public class PowerService {
 
         float inc = increment;
 
-        while (increment <= 100) {
+        while (increment <= 1000) {
+
             float peoplePercent = (increment / 100) * totalPopulation;
 
             timePercent = peoplePercent * timePerson;
@@ -306,8 +324,9 @@ public class PowerService {
                  totalImpact = totalImpact + currentImpact;
             }
 
-            List <HubImpact> xMono = new ArrayList<>();
-            xMono = serviceHelp.getXmono(totalTime,maxTime,distanceCover,maxDistance,pathFollow,startX,endX,startY,endY, startHub,endHub);
+            PathImpact xPath = new PathImpact();
+            xPath = serviceHelp.getXmono(totalTime,maxTime,distanceCover,maxDistance,pathFollow,totalImpact,startX,endX,startY,endY, startHub,endHub);
+
 
         } catch (SQLException e) {
             throw new RuntimeException(e);
@@ -336,9 +355,8 @@ public class PowerService {
                 s1.add(postal1);
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            e.printStackTrace();
         }
-
         return s1;
     }
 
@@ -362,7 +380,7 @@ public class PowerService {
                 s1.add(postal1);
             }
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+           e.printStackTrace();
         }
         return s1;
     }

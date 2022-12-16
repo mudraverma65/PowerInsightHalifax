@@ -110,6 +110,8 @@ public class Main {
         p1.hubDamage("Hub8", 7);
         p1.hubDamage("Hub9", 13);
 
+        p1.hubDamage("Hub9", 15);
+
 
         p1.hubRepair("Hub1", "mudra", 14, false);
         p1.hubRepair("Hub2", "mudra", 18, false);
@@ -134,7 +136,7 @@ public class Main {
         List<Integer> rate = new ArrayList<>();
         rate = p1.rateOfServiceRestoration(0.5f);
 
-        p1.repairPlan("Hub1",50, 50f);
+        p1.repairPlan("Hub1",100, 100f);
 
     }
 }

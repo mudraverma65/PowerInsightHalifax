@@ -1,3 +1,6 @@
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+
 public class HubImpact {
 
     String hubIdentifier;
@@ -19,4 +22,5 @@ public class HubImpact {
     public void setImpactValue(float impactValue) {
         this.impactValue = impactValue;
     }
+
 }
