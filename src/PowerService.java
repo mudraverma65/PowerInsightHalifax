@@ -301,7 +301,7 @@ public class PowerService {
                 "left join hubimpact on point.hubIdentifier = hubimpact.hubIdentifier \n" +
                 "where point.hubIdentifier = ? ";
 
-        String viewDistance = "create view hubdistance as\n" +
+        String viewDistance = "alter view hubdistance as\n" +
                 "select point.hubIdentifier, x, y, (abs(x-?) + abs(y-?))  as distance, impactvalue, repairEstimate\n" +
                 "from point\n" +
                 "left join hubimpact on point.hubIdentifier = hubimpact.hubIdentifier\n" +
@@ -370,35 +370,51 @@ public class PowerService {
             //creating multiple paths
             List<PathImpact> paths = new ArrayList<>();
 
+            List <HubImpact> xpathFollow = new ArrayList<>();
+            xpathFollow = pathFollow;
             PathImpact xPath = new PathImpact();
-            xPath = serviceHelp.getXmono(totalTime,maxTime,distanceCover,maxDistance,pathFollow,totalImpact,startX,endX,startY,endY, startHub,endHub);
+            xPath = serviceHelp.getXmono(totalTime,maxTime,distanceCover,maxDistance,xpathFollow,totalImpact,startX,endX,startY,endY, startHub,endHub);
             paths.add(xPath);
 
+            List <HubImpact> ypathFollow = new ArrayList<>();
+            ypathFollow = pathFollow;
             PathImpact yPath = new PathImpact();
-            yPath = serviceHelp.getYmono(totalTime,maxTime,distanceCover,maxDistance,pathFollow,totalImpact,startX,endX,startY,endY, startHub,endHub);
+            yPath = serviceHelp.getYmono(totalTime,maxTime,distanceCover,maxDistance,ypathFollow,totalImpact,startX,endX,startY,endY, startHub,endHub);
             paths.add(yPath);
 
+            List <HubImpact> dpathFollow = new ArrayList<>();
+            dpathFollow = pathFollow;
             PathImpact distancePath = new PathImpact();
-            distancePath = serviceHelp.getDistance(totalTime,maxTime,distanceCover,maxDistance,pathFollow,totalImpact,startX,endX,startY,endY, startHub,endHub);
+            distancePath = serviceHelp.getDistance(totalTime,maxTime,distanceCover,maxDistance,dpathFollow,totalImpact,startX,endX,startY,endY, startHub,endHub);
             paths.add(distancePath);
 
+            List <HubImpact> ipathFollow = new ArrayList<>();
+            ipathFollow = pathFollow;
             PathImpact impactPath = new PathImpact();
-            impactPath = serviceHelp.getImpact(totalTime,maxTime,distanceCover,maxDistance,pathFollow,totalImpact,startX,endX,startY,endY, startHub,endHub);
+            impactPath = serviceHelp.getImpact(totalTime,maxTime,distanceCover,maxDistance,ipathFollow,totalImpact,startX,endX,startY,endY, startHub,endHub);
             paths.add(impactPath);
 
             //Finding optimum path
             Iterator <PathImpact> it1 = paths.listIterator();
-            while(it1.hasNext()){
-                PathImpact p1 = new PathImpact();
-                p1 = it1.next();
-                Double impact = p1.getTotalImpact();
+            if(it1.hasNext()){
+                PathImpact currentPath = new PathImpact();
+                currentPath = it1.next();
+                Double impact = currentPath.getTotalImpact();
+                while(it1.hasNext()){
+                    PathImpact nextPath = new PathImpact();
+                    nextPath = it1.next();
+                    Double impact2 = nextPath.getTotalImpact();
+                    if(impact2>impact){
+                        impact = impact2;
+                        currentPath = nextPath;
+                    }
+                }
+                pathFollow = currentPath.getPath();
             }
-
-            pathFollow = impactPath.getPath();
 
 
         } catch (SQLException e) {
-            throw new RuntimeException(e);
+            return pathFollow;
         }
         return pathFollow;
     }

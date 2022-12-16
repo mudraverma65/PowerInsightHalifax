@@ -136,7 +136,8 @@ public class Main {
         List<Integer> rate = new ArrayList<>();
         rate = p1.rateOfServiceRestoration(0.5f);
 
-        p1.repairPlan("Hub1",100, 100f);
+        List<HubImpact> h5 = new ArrayList<>();
+        h5 = p1.repairPlan("Hub1",100, 100f);
 
     }
 }

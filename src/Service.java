@@ -21,7 +21,7 @@ public class Service {
                 "inner join hubpeoplepostal on postalcode.postalCode = hubpeoplepostal.postalCode\n" +
                 "set postalcode.hubs = hubpeoplepostal.hubs ;";
 
-        String query_view = "alter view peopleServed as\n" +
+        String query_view = "create view peopleServed as\n" +
                 "select sum(population/hubs) as peopleServed, hubpostal.postalCode, hubpostal.hubIdentifier\n" +
                 "from hubpostal\n" +
                 "left join postalcode on hubpostal.postalCode  = postalcode.postalCode\n" +
