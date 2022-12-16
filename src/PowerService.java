@@ -1,8 +1,10 @@
+import java.nio.file.Path;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 
@@ -10,12 +12,17 @@ public class PowerService {
     Service serviceHelp = new Service();
     JDBCConnection conn = new JDBCConnection();
     boolean addPostalCode(String postalCode, int population, int area) {
+        //To create tables in the database
+        serviceHelp.setTables();
         PostalCode p1 = null;
         try {
             p1 = new PostalCode(postalCode, population, area);
             boolean status;
             status = p1.addPost();
+
+            //postal code already exists
             if (status == false){
+                //method to update values
                 status = p1.updatePost();
             }
         } catch (SQLException e) {
@@ -25,10 +32,13 @@ public class PowerService {
     }
 
     boolean addDistributionHub(String hubIdentifier, Point location, Set<String> servicedAreas) {
+        //object created
         DistributionHub d1 = new DistributionHub(hubIdentifier, location, servicedAreas);
         try {
             boolean status;
             status = d1.addHub();
+
+            //distribution hub already exists
             if(status==false){
                 status = d1.updateHub();
             }
@@ -41,8 +51,12 @@ public class PowerService {
     void hubDamage(String hubIdentifier, float repairEstimate) {
         try {
             boolean status;
+            //method to add hub into database
             status = serviceHelp.addImpact(hubIdentifier, repairEstimate);
+
+            //hub exists hence update
             if(status==false){
+                //method to update hub repair value
                 status = serviceHelp.updateImpact(hubIdentifier, repairEstimate);
             }
         } catch (RuntimeException e) {
@@ -60,17 +74,23 @@ public class PowerService {
             ResultSet resultSet = statement.executeQuery();
             while (resultSet.next()) {
                 timeNeeded = resultSet.getFloat(2);
+                //Subtracting repair done from repair estimate
                 timeNeeded = timeNeeded - repairTime;
+
+                //hub is functional since no repairs needed
                 if (timeNeeded <= 0) {
                     inService = true;
                 }
             }
+            //Hub is functional. Deleting records from hubimpact table
             if (inService == true) {
                 String query1 = "delete from hubimpact where hubIdentifier = ?";
                 PreparedStatement state = conn.setupConnection().prepareStatement(query1);
                 state.setString(1, hubIdentifier);
                 state.execute();
-            } else if (inService == false) {
+            }
+            //Partial repairs done
+            else if (inService == false) {
                 hubDamage(hubIdentifier, timeNeeded);
             }
             conn.setupConnection().close();
@@ -93,6 +113,7 @@ public class PowerService {
             Statement state_people = conn.setupConnection().createStatement();
             ResultSet rs = state_people.executeQuery(find_people);
             while (rs.next()) {
+                //Finding number of people served by each hub and adding it into total
                 Integer peopleHub = rs.getInt(1);
                 people = people + peopleHub;
             }
@@ -104,7 +125,7 @@ public class PowerService {
 
     List<DamagedPostalCodes> mostDamagedPostalCodes(int limit) {
 
-        List<DamagedPostalCodes> m1 = new ArrayList<>();
+        List<DamagedPostalCodes> damagedPostalCodes = new ArrayList<>();
 
         String queryDamage = "insert ignore into damagedpostalcodes (postalCode, repairEstimate)\n" +
                 "select hubpostal.postalCode, sum(repairEstimate)\n" +
@@ -117,20 +138,24 @@ public class PowerService {
                 "order by repairEstimate desc ";
 
         try {
+            //Query to find damaged postal codes and their repairEstimate
             PreparedStatement state1 = conn.setupConnection().prepareStatement(queryDamage);
             state1.execute();
 
+            //Query to sort the table in descending order
             PreparedStatement statement = conn.setupConnection().prepareStatement(queryLDamage);
             ResultSet rs = statement.executeQuery();
 
-            while (rs.next() && m1.size()<limit) {
+            //Adding only limit values
+            while (rs.next() && damagedPostalCodes.size()<limit) {
                 String postal1 = rs.getString(1);
                 Float repair1 = rs.getFloat(2);
                 DamagedPostalCodes d1 = new DamagedPostalCodes();
                 d1.setPostalCode(postal1);
                 d1.setRepairEstimate(repair1);
-                m1.add(d1);
-                while(m1.size() == limit){
+                damagedPostalCodes.add(d1);
+                //Check for a tie situation on last limit element
+                while(damagedPostalCodes.size() == limit){
                     rs.next();
                     if(rs.getFloat(2) == repair1){
                         String postal = rs.getString(1);
@@ -138,21 +163,22 @@ public class PowerService {
                         DamagedPostalCodes d2 = new DamagedPostalCodes();
                         d1.setPostalCode(postal);
                         d1.setRepairEstimate(repair);
-                        m1.add(d1);
+                        //Adding value to the list and incrementing limit
+                        damagedPostalCodes.add(d1);
                         limit ++;
                     }
                 }
             }
 
         } catch (SQLException e) {
-            return m1;
+            return damagedPostalCodes;
         }
-        return m1;
+        return damagedPostalCodes;
     }
 
     List<HubImpact> fixOrder(int limit) {
 
-        List<HubImpact> h1 = new ArrayList<>();
+        List<HubImpact> hubImpact = new ArrayList<>();
 
         String queryImpact = "update hubimpact \n" +
                 "inner join distributionhub on hubimpact.hubIdentifier = distributionhub.hubIdentifier\n" +
@@ -166,37 +192,43 @@ public class PowerService {
 
         PreparedStatement state1 = null;
         try {
+
+            //Query to find impact on respective hubs
             state1 = conn.setupConnection().prepareStatement(queryImpact);
             state1.execute();
 
+            //sorting hubs with their impact in descending order
             PreparedStatement statement = conn.setupConnection().prepareStatement(querylimitImpact);
             ResultSet rs = statement.executeQuery(querylimitImpact);
 
-            while (rs.next() && h1.size()<limit) {
+            //Adding only 'limit' values
+            while (rs.next() && hubImpact.size()<limit) {
                 String hub1 = rs.getString(1);
                 Float impact1 = rs.getFloat(2);
-                HubImpact hubImpact = new HubImpact();
-                hubImpact.setHubIdentifier(hub1);
-                hubImpact.setImpactValue(impact1);
-                h1.add(hubImpact);
-                while(h1.size() == limit ){
+                HubImpact currentImpact = new HubImpact();
+                currentImpact.setHubIdentifier(hub1);
+                currentImpact.setImpactValue(impact1);
+                hubImpact.add(currentImpact);
+                //Checking for tie break situation
+                while(hubImpact.size() == limit ){
                     rs.next();
                     if(rs.getFloat(2) == impact1){
                         String hub = rs.getString(1);
                         Float impact = rs.getFloat(2);
                         HubImpact hubImpact1 = new HubImpact();
-                        hubImpact.setHubIdentifier(hub);
-                        hubImpact.setImpactValue(impact);
-                        h1.add(hubImpact1);
+                        currentImpact.setHubIdentifier(hub);
+                        currentImpact.setImpactValue(impact);
+
+                        //Adding value and incrementing limit
+                        hubImpact.add(hubImpact1);
                         limit ++;
                     }
                 }
             }
-
         } catch (SQLException e) {
-            return h1;
+            return hubImpact;
         }
-        return h1;
+        return hubImpact;
     }
 
     List<Integer> rateOfServiceRestoration(float increment) {
@@ -207,6 +239,7 @@ public class PowerService {
 
         int totalHours = serviceHelp.hoursTotal();
 
+        //Time needed per person
         float timePerson = (float) totalHours / totalPopulation;
 
         float timePercent;
@@ -217,12 +250,16 @@ public class PowerService {
 
         float inc = increment;
 
+        //since increment has been multiplied by 100
         while (increment <= 1000) {
 
+            //Finding number of people for 'increment'%
             float peoplePercent = (increment / 100) * totalPopulation;
 
+            //Finding time for number of people
             timePercent = peoplePercent * timePerson;
 
+            //Rounding value because return type is hours
             hoursEntry = Math.round(timePercent);
 
             rate.add(hoursEntry);
@@ -264,7 +301,7 @@ public class PowerService {
                 "left join hubimpact on point.hubIdentifier = hubimpact.hubIdentifier \n" +
                 "where point.hubIdentifier = ? ";
 
-        String viewDistance = "alter view hubdistance as\n" +
+        String viewDistance = "create view hubdistance as\n" +
                 "select point.hubIdentifier, x, y, (abs(x-?) + abs(y-?))  as distance, impactvalue, repairEstimate\n" +
                 "from point\n" +
                 "left join hubimpact on point.hubIdentifier = hubimpact.hubIdentifier\n" +
@@ -272,6 +309,8 @@ public class PowerService {
                 "order by impactvalue desc ;";
 
         try {
+
+            //Query to find values of startHub
             PreparedStatement statement = conn.setupConnection().prepareStatement(queryfindHub);
             statement.setString(1, startHub);
             ResultSet rs = statement.executeQuery();
@@ -281,17 +320,21 @@ public class PowerService {
                 int currentTime = rs.getInt(3);
                 Float currentImpact = rs.getFloat(4);
 
+                //creating variable of HubImpact class and setting its values
                 HubImpact h1 = new HubImpact();
                 h1.setImpactValue(currentImpact);
                 h1.setHubIdentifier(startHub);
 
+                //Adding the startHub object to final list
                 pathFollow.add(h1);
 
+                //Updating values of time and impact
                 totalTime = totalTime + currentTime;
                 totalImpact = totalImpact + currentImpact;
 
             }
 
+            //Query to find enhub
             PreparedStatement statementEnd = conn.setupConnection().prepareStatement(viewDistance);
             statementEnd.setDouble(1, startX);
             statementEnd.setDouble(2, startY);
@@ -324,8 +367,34 @@ public class PowerService {
                  totalImpact = totalImpact + currentImpact;
             }
 
+            //creating multiple paths
+            List<PathImpact> paths = new ArrayList<>();
+
             PathImpact xPath = new PathImpact();
             xPath = serviceHelp.getXmono(totalTime,maxTime,distanceCover,maxDistance,pathFollow,totalImpact,startX,endX,startY,endY, startHub,endHub);
+            paths.add(xPath);
+
+            PathImpact yPath = new PathImpact();
+            yPath = serviceHelp.getYmono(totalTime,maxTime,distanceCover,maxDistance,pathFollow,totalImpact,startX,endX,startY,endY, startHub,endHub);
+            paths.add(yPath);
+
+            PathImpact distancePath = new PathImpact();
+            distancePath = serviceHelp.getDistance(totalTime,maxTime,distanceCover,maxDistance,pathFollow,totalImpact,startX,endX,startY,endY, startHub,endHub);
+            paths.add(distancePath);
+
+            PathImpact impactPath = new PathImpact();
+            impactPath = serviceHelp.getImpact(totalTime,maxTime,distanceCover,maxDistance,pathFollow,totalImpact,startX,endX,startY,endY, startHub,endHub);
+            paths.add(impactPath);
+
+            //Finding optimum path
+            Iterator <PathImpact> it1 = paths.listIterator();
+            while(it1.hasNext()){
+                PathImpact p1 = new PathImpact();
+                p1 = it1.next();
+                Double impact = p1.getTotalImpact();
+            }
+
+            pathFollow = impactPath.getPath();
 
 
         } catch (SQLException e) {
@@ -336,7 +405,7 @@ public class PowerService {
 
     List<String> underservedPostalByPopulation(int limit) {
 
-        List<String> s1 = new ArrayList<>();
+        List<String> underPopulation = new ArrayList<>();
 
         String querybyPopulation = "select postalcode.postalCode, count(hubpostal.hubIdentifier)/population as served\n" +
                 " from hubimpact\n" +
@@ -347,21 +416,22 @@ public class PowerService {
 
         PreparedStatement statement = null;
         try {
+            //Finding postal code least served in terms of population
             statement = conn.setupConnection().prepareStatement(querybyPopulation);
             ResultSet rs = statement.executeQuery(querybyPopulation);
 
             while (rs.next()) {
                 String postal1 = rs.getString(1);
-                s1.add(postal1);
+                underPopulation.add(postal1);
             }
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return s1;
+        return underPopulation;
     }
 
     List<String> underservedPostalByArea(int limit) {
-        List<String> s1 = new ArrayList<>();
+        List<String> underArea = new ArrayList<>();
 
         String querybyArea = "select postalcode.postalCode, count(hubpostal.hubIdentifier)/area as served\n" +
                 " from hubimpact\n" +
@@ -377,12 +447,12 @@ public class PowerService {
 
             while (rs.next()) {
                 String postal1 = rs.getString(1);
-                s1.add(postal1);
+                underArea.add(postal1);
             }
         } catch (SQLException e) {
            e.printStackTrace();
         }
-        return s1;
+        return underArea;
     }
 
 }

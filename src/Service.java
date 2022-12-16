@@ -9,9 +9,10 @@ public class Service {
 
     JDBCConnection conn = new JDBCConnection();
 
+    //Method to set up table with people served per hub
     void setServed() {
         String hubsPostal =
-                "alter view hubpeoplepostal as \n" +
+                "create view hubpeoplepostal as \n" +
                         "select count(hubIdentifier) as hubs, postalCode\n" +
                         "from hubpostal\n" +
                         "group by postalCode;";
@@ -49,6 +50,7 @@ public class Service {
         }
     }
 
+    //Method to find total number of people without service
     int peopleTotal() {
 
         Integer totalPeople = null;
@@ -70,6 +72,7 @@ public class Service {
         return totalPeople;
     }
 
+    //Method to find hours needed across system to restore power
     int hoursTotal() {
         Integer totalHours = null;
         String queryTotal = "select sum(repairEstimate)\n" +
@@ -89,6 +92,7 @@ public class Service {
         return totalHours;
     }
 
+    //Method to set tables in database
     void setTables() {
 
         String queryPostalCode = "create table PostalCode (\n" +
@@ -158,6 +162,7 @@ public class Service {
         }
     }
 
+    //Method to add impact
     boolean addImpact(String hubIdentifier, float repairEstimate){
         JDBCConnection conn = new JDBCConnection();
         String query = "Insert into hubimpact (hubIdentifier, repairEstimate) values (?,?) ";
@@ -172,6 +177,7 @@ public class Service {
         return true;
     }
 
+    //Method to update impact if hub exists
     boolean updateImpact(String hubIdentifier, float repairEstimate ){
         JDBCConnection conn = new JDBCConnection();
         String query = "update hubimpact " +
@@ -188,6 +194,7 @@ public class Service {
         return true;
     }
 
+    //Method to calculate the x monotone path
     PathImpact getXmono(float totalTime, float maxTime, int totalDistance, float maxDistance, List<HubImpact> path, Double totalImpact, Double startX, Double endX, Double startY, Double endY, String startHub, String endHub){
 
         String listHubs = "select * \n" +
@@ -257,6 +264,288 @@ public class Service {
                         diagonal = diagonal + 0;
                     }
                     if (totalTime <= maxTime && totalDistance <= maxDistance && diagonal < 2 && ((xInc == true && yInc == false) || (xInc == true && yInc == true))) {
+                        HubImpact h1 = new HubImpact();
+                        h1.setHubIdentifier(resultList.getString(1));
+                        h1.setImpactValue(resultList.getFloat(5));
+                        xMono.add(h1);
+                    }
+
+                    startX = currentX;
+                    startY = currentY;
+
+                }
+
+            }
+
+            p1.setPath(xMono);
+            p1.setTotalImpact(totalImpact);
+
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return p1;
+
+    }
+
+    //Method to calculate the y monotone path
+    PathImpact getYmono(float totalTime, float maxTime, int totalDistance, float maxDistance, List<HubImpact> path, Double totalImpact, Double startX, Double endX, Double startY, Double endY, String startHub, String endHub){
+
+        String listHubs = "select * \n" +
+                "from hubdistance \n" +
+                "where x between least(?, ?) and greatest(?,?) and y between least(?, ?) and greatest(?,?) order by y asc ";
+
+        List<HubImpact> xMono = path;
+
+        int diagonal =0;
+
+        boolean xInc = true;
+
+        boolean yInc = true;
+
+        Double midpointX = startX;
+        Double midpointY = startY;
+
+        PathImpact p1 = new PathImpact();
+
+        PreparedStatement statementList = null;
+        try {
+            statementList = conn.setupConnection().prepareStatement(listHubs);
+
+            statementList.setDouble(1, startX);
+            statementList.setDouble(2, endX);
+            statementList.setDouble(3, startX);
+            statementList.setDouble(4, endX);
+            statementList.setDouble(5, startY);
+            statementList.setDouble(6, endY);
+            statementList.setDouble(7, startY);
+            statementList.setDouble(8, endY);
+            ResultSet resultList = statementList.executeQuery();
+
+            while(resultList.next() ) {
+                String currentHub = resultList.getString(1);
+                if(currentHub.equals(startHub)==false && currentHub.equals(endHub)==false){
+                    totalTime = totalTime + resultList.getFloat(6);
+                    totalDistance = totalDistance + resultList.getInt(4);
+                    Double currentX = resultList.getDouble(2);
+                    Double currentY = resultList.getDouble(3);
+                    totalImpact = totalImpact + resultList.getFloat(5);
+                    //String currentHub = resultList.getString(1);
+
+                    if(currentX >= startX  ){
+                        xInc = true;
+                    }
+                    else{
+                        xInc = false;
+                    }
+
+                    if(currentY >= startY){
+                        yInc = true;
+                    }
+                    else{
+                        yInc = false;
+                    }
+
+                    if((currentX - startX) > (endX - midpointX) / 2 ){
+                        diagonal = diagonal + 1;
+                    }
+
+                    else if((currentY - startY) > (endY - midpointY)/2 ){
+                        diagonal = diagonal + 1;
+                    }
+
+                    else{
+                        diagonal = diagonal + 0;
+                    }
+                    if (totalTime <= maxTime && totalDistance <= maxDistance && diagonal < 2 && ((xInc == true && yInc == true) || (xInc == false && yInc == true))) {
+                        HubImpact h1 = new HubImpact();
+                        h1.setHubIdentifier(resultList.getString(1));
+                        h1.setImpactValue(resultList.getFloat(5));
+                        xMono.add(h1);
+                    }
+
+                    startX = currentX;
+                    startY = currentY;
+
+                }
+
+            }
+
+            p1.setPath(xMono);
+            p1.setTotalImpact(totalImpact);
+
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return p1;
+
+    }
+
+    //Method to calculate the distance path
+    PathImpact getDistance(float totalTime, float maxTime, int totalDistance, float maxDistance, List<HubImpact> path, Double totalImpact, Double startX, Double endX, Double startY, Double endY, String startHub, String endHub){
+
+        String listHubs = "select * \n" +
+                "from hubdistance \n" +
+                "where x between least(?, ?) and greatest(?,?) and y between least(?, ?) and greatest(?,?) order by distance asc ";
+
+        List<HubImpact> xMono = path;
+
+        int diagonal =0;
+
+        boolean xInc = true;
+
+        boolean yInc = true;
+
+        Double midpointX = startX;
+        Double midpointY = startY;
+
+        PathImpact p1 = new PathImpact();
+
+        PreparedStatement statementList = null;
+        try {
+            statementList = conn.setupConnection().prepareStatement(listHubs);
+
+            statementList.setDouble(1, startX);
+            statementList.setDouble(2, endX);
+            statementList.setDouble(3, startX);
+            statementList.setDouble(4, endX);
+            statementList.setDouble(5, startY);
+            statementList.setDouble(6, endY);
+            statementList.setDouble(7, startY);
+            statementList.setDouble(8, endY);
+            ResultSet resultList = statementList.executeQuery();
+
+            while(resultList.next() ) {
+                String currentHub = resultList.getString(1);
+                if(currentHub.equals(startHub)==false && currentHub.equals(endHub)==false){
+                    totalTime = totalTime + resultList.getFloat(6);
+                    totalDistance = totalDistance + resultList.getInt(4);
+                    Double currentX = resultList.getDouble(2);
+                    Double currentY = resultList.getDouble(3);
+                    totalImpact = totalImpact + resultList.getFloat(5);
+                    //String currentHub = resultList.getString(1);
+
+                    if(currentX >= startX  ){
+                        xInc = true;
+                    }
+                    else{
+                        xInc = false;
+                    }
+
+                    if(currentY >= startY){
+                        yInc = true;
+                    }
+                    else{
+                        yInc = false;
+                    }
+
+                    if((currentX - startX) > (endX - midpointX) / 2 ){
+                        diagonal = diagonal + 1;
+                    }
+
+                    else if((currentY - startY) > (endY - midpointY)/2 ){
+                        diagonal = diagonal + 1;
+                    }
+
+                    else{
+                        diagonal = diagonal + 0;
+                    }
+                    if (totalTime <= maxTime && totalDistance <= maxDistance && diagonal < 2 && (((xInc == true && yInc == true) || (xInc == false && yInc == true)) || ((xInc == true && yInc == true) || (xInc == false && yInc == false)))){
+                        HubImpact h1 = new HubImpact();
+                        h1.setHubIdentifier(resultList.getString(1));
+                        h1.setImpactValue(resultList.getFloat(5));
+                        xMono.add(h1);
+                    }
+
+                    startX = currentX;
+                    startY = currentY;
+
+                }
+
+            }
+
+            p1.setPath(xMono);
+            p1.setTotalImpact(totalImpact);
+
+
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
+        }
+        return p1;
+
+    }
+
+    //Method to calculate the impact path
+    PathImpact getImpact(float totalTime, float maxTime, int totalDistance, float maxDistance, List<HubImpact> path, Double totalImpact, Double startX, Double endX, Double startY, Double endY, String startHub, String endHub){
+
+        String listHubs = "select * \n" +
+                "from hubdistance \n" +
+                "where x between least(?, ?) and greatest(?,?) and y between least(?, ?) and greatest(?,?) order by impactValue asc ";
+
+        List<HubImpact> xMono = path;
+
+        int diagonal =0;
+
+        boolean xInc = true;
+
+        boolean yInc = true;
+
+        Double midpointX = startX;
+        Double midpointY = startY;
+
+        PathImpact p1 = new PathImpact();
+
+        PreparedStatement statementList = null;
+        try {
+            statementList = conn.setupConnection().prepareStatement(listHubs);
+
+            statementList.setDouble(1, startX);
+            statementList.setDouble(2, endX);
+            statementList.setDouble(3, startX);
+            statementList.setDouble(4, endX);
+            statementList.setDouble(5, startY);
+            statementList.setDouble(6, endY);
+            statementList.setDouble(7, startY);
+            statementList.setDouble(8, endY);
+            ResultSet resultList = statementList.executeQuery();
+
+            while(resultList.next() ) {
+                String currentHub = resultList.getString(1);
+                if(currentHub.equals(startHub)==false && currentHub.equals(endHub)==false){
+                    totalTime = totalTime + resultList.getFloat(6);
+                    totalDistance = totalDistance + resultList.getInt(4);
+                    Double currentX = resultList.getDouble(2);
+                    Double currentY = resultList.getDouble(3);
+                    totalImpact = totalImpact + resultList.getFloat(5);
+                    //String currentHub = resultList.getString(1);
+
+                    if(currentX >= startX  ){
+                        xInc = true;
+                    }
+                    else{
+                        xInc = false;
+                    }
+
+                    if(currentY >= startY){
+                        yInc = true;
+                    }
+                    else{
+                        yInc = false;
+                    }
+
+                    if((currentX - startX) > (endX - midpointX) / 2 ){
+                        diagonal = diagonal + 1;
+                    }
+
+                    else if((currentY - startY) > (endY - midpointY)/2 ){
+                        diagonal = diagonal + 1;
+                    }
+
+                    else{
+                        diagonal = diagonal + 0;
+                    }
+                    if (totalTime <= maxTime && totalDistance <= maxDistance && diagonal < 2 && (((xInc == true && yInc == true) || (xInc == false && yInc == true)) || ((xInc == true && yInc == true) || (xInc == false && yInc == false)))){
                         HubImpact h1 = new HubImpact();
                         h1.setHubIdentifier(resultList.getString(1));
                         h1.setImpactValue(resultList.getFloat(5));

@@ -1,6 +1,5 @@
 public class DamagedPostalCodes {
     String postalCode;
-
     float repairEstimate;
 
     public String getPostalCode() {
