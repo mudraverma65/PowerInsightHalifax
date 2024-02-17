@@ -1,3 +1,5 @@
+# Power Insight Halifax
+
 Project for CSCI3901 - Software Development Concepts
 
 Create a class called “PowerService” that lets us manage information about the power service and reports on that power service. The class can use internal data structures, databases, or files to store information.
